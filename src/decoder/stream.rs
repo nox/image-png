@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::default::Default;
 use std::error;
 use std::fmt;
-use std::mem;
 use std::io;
 use std::cmp::min;
 use std::convert::From;
@@ -161,8 +160,6 @@ impl StreamingDecoder {
     /// result.
     pub fn update<'a>(&'a mut self, mut buf: &[u8])
     -> Result<(usize, Decoded<'a>), DecodingError> {
-        // NOTE: Do not change the function signature without double-checking the
-        //       unsafe block!
         let len = buf.len();
         while buf.len() > 0 && self.state.is_some() {
             match self.next_state(buf) {
@@ -171,21 +168,7 @@ impl StreamingDecoder {
                 }
                 Ok((bytes, result)) => {
                     buf = &buf[bytes..];
-                    return Ok(
-                        (len-buf.len(),
-                        // This transmute just casts the lifetime away. Since Rust only
-                        // has SESE regions, this early return cannot be worked out and
-                        // such that the borrow region of self includes the whole block.
-                        // The explixit lifetimes in the function signature ensure that
-                        // this is safe.
-                        // ### NOTE
-                        // To check that everything is sound, return the result without
-                        // the match (e.g. `return Ok(try!(self.next_state(buf)))`). If
-                        // it compiles the returned lifetime is correct.
-                        unsafe {
-                            mem::transmute::<Decoded, Decoded>(result)
-                        }
-                    ))
+                    return Ok((len-buf.len(), result));
                 }
                 Err(err) => return Err(err)
             }

@@ -112,11 +112,7 @@ impl<R: Read> ReadDecoder<R> {
             match result {
                 Decoded::Nothing => (),
                 Decoded::ImageEnd => self.at_eof = true,
-                result => return Ok(Some(unsafe {
-                    // This transmute just casts the lifetime away. See comment
-                    // in StreamingDecoder::update for more information.
-                    mem::transmute::<Decoded, Decoded>(result)
-                }))
+                result => return Ok(Some(result)),
             }
         }
         Ok(None)
